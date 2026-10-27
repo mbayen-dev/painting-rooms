@@ -4,7 +4,9 @@ Walkable, path-traced clay models of the rooms inside paintings, rebuilt in metr
 
 **First room: Caravaggio, *The Calling of Saint Matthew* (1599-1600, 322 x 340 cm).**
 
-Live page: https://mbayen-dev.github.io/painting-rooms/
+Live site: https://mbayen-dev.github.io/painting-rooms/ (home page with all rooms)
+
+Rooms: `calling.html`, `las-meninas.html`, `folies-bergere.html`.
 
 ## How it works
 - The camera is solved from the painting: horizon at row 513 of 1197, focal length 1110 px (from the 45 degree shutter's distance point), eye height 1.52 m.
@@ -20,4 +22,6 @@ Live page: https://mbayen-dev.github.io/painting-rooms/
 
 **Second room: Velazquez, *Las Meninas* (1656, 318 x 276 cm)** at `las-meninas.html`, with four theories of how it was painted: as painted, royals at the viewer's position, the mirror reflecting the canvas (Snyder and Cohen), and painted from a large mirror. The viewing distance is an adjustable assumption because one vanishing point cannot fix it.
 
-Both painting images are public domain.
+**Third room: Manet, *A Bar at the Folies-Bergere* (1882, 96 x 130 cm)** at `folies-bergere.html`. Four readings of the mirror: as painted, a real flat mirror with the viewer in the middle, the barmaid moved between two moments, and a single off-axis viewpoint. A slider sets how far the glass stands behind her, the main unknown.
+
+All painting images are public domain.
