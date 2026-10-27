@@ -456,7 +456,7 @@ function buildTheory() {
     line(cam, mirrorCentre, 0xa69c9c); line(mirrorCentre, atCam, 0xe3a63c);
     readEl.innerHTML = card('Philip IV and Mariana stand at the camera, in front of the picture, looking in.',
       'Velázquez stands behind the easel and looks around it at the royals, painting them on the canvas whose back we see. For the finished picture he must invent the view from where they stand, since he never stood there himself.',
-      'bad', 'No', 'Seen from the camera, the mirror on the back wall reflects the point <b>' + Math.abs(atCam.x).toFixed(2) + ' m to the left</b> of the viewing axis. For the royals to appear in it they would have to stand there, not at the axis. The orange line shows the reflection.');
+      'warn', 'Not at the camera', 'Seen from the camera, the mirror on the back wall reflects the point <b>' + Math.abs(atCam.x).toFixed(2) + ' m to the left</b> of the viewing axis. So the royals cannot stand at the camera and also appear in the mirror. They could stand at that point instead, but the canvas lies on the same line of sight. If it is wider than about 0.9 m (the left edge is outside the picture, so this is an assumption), the mirror would still show the canvas and hide them. The orange line shows the reflection.');
   }
   if (theory === 2) {
     line(cam, mirrorCentre, 0xa69c9c); line(mirrorCentre, atCanvas, 0xe3a63c);
@@ -464,7 +464,7 @@ function buildTheory() {
     const inside = atCanvas.x < -0.96 && atCanvas.x > -3.6;
     readEl.innerHTML = card('The royals are not in the room. Their double portrait is on the easel, facing the back wall and the mirror.',
       'He paints the royal portrait first. He then sets the large canvas so its face turns toward the mirror, and paints what the mirror picks up. The result is a picture of a picture.',
-      inside ? 'ok' : 'warn', inside ? 'Yes' : 'Barely', 'The mirror ray lands <b>' + Math.abs(atCanvas.x).toFixed(2) + ' m</b> left of the axis at the canvas plane, and the canvas spans 0.96 to 3.60 m, so it ' + (inside ? '<b>lands on the canvas face</b>' : '<b>misses the canvas</b>') + '. Switch to path tracing and the mirror shows the two teal busts. One loose end: the figures still look out at the viewer, so someone is meant to be there.');
+      inside ? 'ok' : 'warn', inside ? 'Yes' : 'Barely', 'The mirror ray lands <b>' + Math.abs(atCanvas.x).toFixed(2) + ' m</b> left of the axis at the canvas plane, and the canvas spans 0.96 to 3.60 m, so it ' + (inside ? '<b>lands on the canvas face</b>' : '<b>misses the canvas</b>') + '. Switch to path tracing and the mirror shows the two teal busts. This does not exclude the royals also being in the room, standing off to the left. It only says the mirror would show the canvas, not them. One loose end: the figures still look out at the viewer, so someone is meant to be there.');
   }
   if (theory === 3) {
     const dm = 1.85 * K, F = F0 * K, wFrame = (IW + 60) * dm / F, hFrame = (IH + 120) * dm / F;
