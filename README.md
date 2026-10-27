@@ -18,4 +18,6 @@ Live page: https://mbayen-dev.github.io/painting-rooms/
 - Invented: hidden bodies, ceiling, floor extent, the open right side.
 - Open: the painted dark wedge on the wall is not reproduced.
 
-The painting image is public domain. Next planned room: Velazquez, *Las Meninas*.
+**Second room: Velazquez, *Las Meninas* (1656, 318 x 276 cm)** at `las-meninas.html`, with four theories of how it was painted: as painted, royals at the viewer's position, the mirror reflecting the canvas (Snyder and Cohen), and painted from a large mirror. The viewing distance is an adjustable assumption because one vanishing point cannot fix it.
+
+Both painting images are public domain.

@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta charset="utf-8">
 <title>Painting Rooms</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: full-bleed 3D stage, title card top-left, view switcher bottom-centre, instrument panel on the right (bottom sheet on phones). */
-*, *::before, *::after { box-sizing: border-box; }
 :root {
   --ground: #0d0a08;
   --panel: rgba(24, 18, 14, 0.88);
@@ -30,6 +30,7 @@ body { background: var(--ground); color: var(--ink); font: 13px/1.45 var(--f-bod
 .card { position: absolute; background: var(--panel); border: 1px solid var(--line); backdrop-filter: blur(8px); }
 #title { left: 16px; top: calc(12px + env(safe-area-inset-top, 0px)); padding: 12px 14px; max-width: min(360px, calc(100% - 32px)); }
 #title h1 { margin: 0; font: 700 20px/1.1 var(--f-display); letter-spacing: -0.01em; text-wrap: balance; }
+#title a { color: var(--ochre); }
 #title p { margin: 6px 0 0; color: var(--ink-dim); font: 400 11px/1.4 var(--f-mono); letter-spacing: 0.02em; }
 #views { left: 50%; transform: translateX(-50%); bottom: calc(14px + env(safe-area-inset-bottom, 0px)); display: flex; padding: 4px; gap: 2px; z-index: 3; }
 button, .seg label { font: 500 12px var(--f-body); }
@@ -96,7 +97,7 @@ html, body { margin: 0; }
 
 <div class="card" id="title">
   <h1>The Calling of Saint Matthew</h1>
-  <p>Caravaggio, 1599–1600 · 322 × 340 cm · Contarelli Chapel, Rome. Rebuilt in metres from the canvas as if it were a photograph.</p>
+  <p>Caravaggio, 1599–1600 · 322 × 340 cm · Contarelli Chapel, Rome. Rebuilt in metres from the canvas as if it were a photograph. <a href="las-meninas.html">Las Meninas</a></p>
 </div>
 <div id="status" role="status"></div>
 <button class="card" id="toggle" aria-expanded="false" aria-controls="panel">Controls</button>
@@ -146,7 +147,6 @@ html, body { margin: 0; }
       <label class="chk"><input type="checkbox" id="diff"> Difference blend</label>
       <label class="chk"><input type="checkbox" id="ptr"> Show where fingers point</label>
       <div class="stat" id="ptrread"></div>
-      <p class="note">Lines extend each forearm through the fingertip. They are guesses, not measurements.</p>
       <label class="chk"><input type="checkbox" id="grid"> Floor grid (0.5 m)</label>
       <label class="chk"><input type="checkbox" id="measure"> Measure: click two points</label>
       <div class="stat" id="mread">&nbsp;</div>
