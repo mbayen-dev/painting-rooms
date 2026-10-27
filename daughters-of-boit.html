@@ -133,7 +133,7 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
 
 <div class="card" id="title">
   <h1>The Daughters of Edward Darley Boit</h1>
-  <p>Sargent, 1882 · 222 × 223 cm · Museum of Fine Arts, Boston. One room, three possible light sources. <a href="index.html">All paintings</a></p>
+  <p>Sargent, 1882 · 222 × 223 cm · Museum of Fine Arts, Boston. One room, three light sources, and a mirror that reflects one of them. <a href="index.html">All paintings</a></p>
 </div>
 <div id="status" role="status"></div>
 <button class="card" id="toggle" aria-expanded="false" aria-controls="panel">Controls</button>
@@ -157,6 +157,16 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
       <p class="note">Switch each light on or off and move it. The room stays fixed, so only the lighting changes. Fade the painting over the render to judge.</p>
       <div id="lights" class="body"></div>
       <label class="chk"><input type="checkbox" id="gizmo" checked> Show light positions</label>
+    </div>
+  </details>
+  <details open>
+    <summary><h2>What is the mirror reflecting?</h2></summary>
+    <div class="body">
+      <p class="note">The small glass on the back wall shows a bright window. It hangs on a wall facing the viewer, so a ray from the viewer reflects straight back across the room. Turn it to test other mounts.</p>
+      <label class="row"><span>Mirror turn</span><input type="range" id="myaw" min="-80" max="80" step="1" value="0"><output id="o-myaw">0\u00b0</output></label>
+      <button class="btn" id="aim">Turn it to catch the far-left window</button>
+      <div class="stat" id="mirrorread"></div>
+      <p class="note">In Fast preview the glass is a true planar reflection. In Path traced mode it reflects with full bounces.</p>
     </div>
   </details>
   <details open>
@@ -204,7 +214,7 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
         <tr><td>Eye height</td><td>1.10 m</td></tr>
         <tr><td>Floor point depth</td><td>f · h / (row − horizon)</td></tr>
       </table>
-      <p class="note">The rug is a rectangle turned about 21° from the walls, so its two edges give two vanishing points at columns −215 and 5200. For perpendicular edges, f² equals the product of their distances from the centre, which gives 1800 px. The horizon and eye height come from placing the elder girls and the younger one at their plausible heights on the floor: the viewer's eye is about as low as a child's.</p>
+      <p class="note">The rug is a rectangle turned about 21° from the walls, so its two edges give two vanishing points at columns −215 and 5200. For perpendicular edges, f² equals the product of their distances from the centre, which gives 1800 px. The horizon and eye height come from placing Mary Louisa (8) and the elder sisters at their plausible heights on the floor: the viewer's eye is about as low as a child's.</p>
     </div>
   </details>
   <details>
@@ -212,9 +222,9 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
     <div class="body">
       <table>
         <tr><td>Tall vase</td><td>1.85 m</td></tr>
-        <tr><td>Mary Louisa's head</td><td>0.22 m</td></tr>
+        <tr><td>Julia's head (the toddler)</td><td>0.22 m</td></tr>
         <tr><td>Rug, visible length</td><td>2.6 × 2.2 m</td></tr>
-        <tr><td>Left wall, behind Julia</td><td>0.9 m</td></tr>
+        <tr><td>Left wall, behind Mary Louisa</td><td>0.9 m</td></tr>
         <tr><td>Standing girls (set)</td><td>1.26 m, 1.5 m</td></tr>
       </table>
       <p class="note">The two standing heights were used to find the horizon, so they are assumptions, not tests. The vase and the toddler's head were not used, and both come out at believable sizes.</p>
@@ -225,8 +235,8 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
     <div class="body">
       <p class="note"><span class="tag">Measured</span> Floor positions of the four girls, the vases, the rug outline, the left wall line.</p>
       <p class="note"><span class="tag">Inferred</span> Camera height, focal length, the depth of the walls and alcove, the cabinet and the red door.</p>
-      <p class="note"><span class="tag">Invented</span> The three light positions, the ceiling and anything outside the frame, hidden bodies, the room to the right of the red door.</p>
-      <p class="note"><b>Your call.</b> The three lights here are my reading of the painting: a window at the front left, a high light over the hall, and a glow from the vestibule. If your class settled on different ones, move them with the sliders.</p>
+      <p class="note"><span class="tag">Invented</span> Light positions other than the direction of the far-left window, the ceiling and anything outside the frame, hidden bodies, the room to the right of the red door.</p>
+      <p class="note"><b>Review note.</b> The focal length assumes the picture's centre is the viewer's axis. If the axis sits further right, f rises (about 2000 px at column 700), and the direction the mirror reflects changes. With a mirror hung flat on the back wall, a ray from a viewer left of the glass reflects to the viewer's right, not the far left. A far-left window only shows in the glass if the glass is turned toward the left (about 35 degrees) or the viewer's axis lies to the right of the glass. Use the mirror turn control to test.</p>
     </div>
   </details>
 </aside>
@@ -243,6 +253,7 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { Reflector } from 'three/addons/objects/Reflector.js';
 import { PhysicalSpotLight, WebGLPathTracer } from 'three-gpu-pathtracer';
 
 /* ---------- Camera calibration in reference-image pixels (960 x 963) ---------- */
@@ -302,6 +313,8 @@ function figure(s) {
   ell(C, hr * 0.82, hr * 1.15, hr * 0.95, hq);
   ell(new V3(0, -hr * 0.1, hr * 0.98).applyQuaternion(hq).add(C), hr * 0.16, hr * 0.28, hr * 0.2, hq);
   limb(N, C.clone().add(new V3(0, -hr * 0.8, 0)), 0.04 * k + 0.01, 0.038 * k + 0.01);
+  if (s.hair) ell(C.clone().add(new V3(0, -hr * 0.55 * s.hair, -hr * 0.3).applyQuaternion(hq)), hr * 0.98, hr * (0.95 + 0.75 * s.hair), hr * 0.82, hq);
+  [S0, S1].forEach(p => ball(p, 0.05 * k + 0.025));
   const sh = [S0, S1];
   (s.arms || []).forEach((a, i) => { const E = J(a.e), Wr = J(a.w); limb(sh[i], E, 0.04 * k + 0.005, 0.034 * k + 0.005); limb(E, Wr, 0.034 * k + 0.005, 0.026 * k + 0.004); ell(Wr, 0.035 * k + 0.01, 0.04 * k + 0.01, 0.03 * k, null); });
   const hips = [H0, H1], yd = new V3(Math.sin(deg(s.yaw)), 0, Math.cos(deg(s.yaw)));
@@ -316,20 +329,21 @@ function figure(s) {
     m.position.copy(w).add(h).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, h.clone().sub(w).normalize()); add(m);
   }
 }
+// Standard identification: Mary Louisa (8) at left, Florence (14) leaning on the vase, Jane (12) facing us, Julia (4) on the rug.
 const girls = [
-  { z: 5.28, zh: 5.28, zk: 5.28, k: 0.65, head: [135, 395, 36], yaw: 5, pitch: 0, neck: [140, 446], sh: [[90, 470], [188, 476]], hip: [[102, 562], [180, 562]],
-    arms: [{ e: [72, 540], w: [102, 600, 5.15] }, { e: [202, 545], w: [172, 600, 5.15] }],
+  { z: 5.28, zh: 5.28, zk: 5.28, k: 0.65, hair: 1.0, head: [135, 395, 36], yaw: 5, pitch: 0, neck: [140, 446], sh: [[90, 470], [188, 476]], hip: [[102, 562], [180, 562]],
+    arms: [{ e: [72, 540, 5.35], w: [112, 598, 5.55] }, { e: [202, 545, 5.35], w: [166, 598, 5.55] }],
     skirt: { waist: [140, 540, 0.11], hem: [140, 650, 0.3] },
     legs: [{ k: [112, 690], a: [115, 762] }, { k: [150, 692], a: [168, 772] }] },
-  { z: 7.47, zh: 7.47, zk: 7.47, k: 0.8, head: [380, 326, 26], yaw: -70, pitch: 0, neck: [386, 366], sh: [[350, 386], [426, 394]], hip: [[372, 510], [430, 516]],
-    arms: [{ e: [345, 455], w: [350, 500] }, { e: [452, 450], w: [452, 490] }],
+  { z: 7.25, zh: 7.35, zk: 7.4, k: 0.8, hair: 1.2, head: [378, 326, 26], yaw: -78, pitch: 6, neck: [385, 366], sh: [[348, 386], [425, 394]], hip: [[372, 510], [430, 516]],
+    arms: [{ e: [343, 455, 7.0], w: [348, 505, 7.0] }, { e: [452, 450, 7.3], w: [452, 490, 7.3] }],
     skirt: { waist: [400, 505, 0.13], hem: [405, 585, 0.3] },
     legs: [{ k: [385, 625], a: [422, 668] }, { k: [410, 627], a: [440, 668] }] },
-  { z: 7.47, zh: 7.47, zk: 7.47, k: 0.8, head: [492, 330, 26], yaw: 0, pitch: 0, neck: [498, 368], sh: [[456, 390], [540, 392]], hip: [[470, 518], [538, 522]],
+  { z: 7.47, zh: 7.47, zk: 7.47, k: 0.8, hair: 1.2, head: [492, 330, 26], yaw: 0, pitch: 0, neck: [498, 368], sh: [[456, 390], [540, 392]], hip: [[470, 518], [538, 522]],
     arms: [{ e: [452, 455], w: [452, 492] }, { e: [548, 470], w: [545, 500] }],
     skirt: { waist: [504, 518, 0.13], hem: [505, 582, 0.31] },
     legs: [{ k: [488, 625], a: [510, 668] }, { k: [520, 627], a: [520, 668] }] },
-  { z: 4.4, zh: 4.4, zk: 4.4, k: 0.55, head: [612, 692, 41], yaw: 5, pitch: 4, neck: [636, 746], sh: [[592, 762], [690, 770]], hip: [[640, 828], [716, 834]],
+  { z: 4.4, zh: 4.4, zk: 4.4, k: 0.55, hair: 1.2, head: [612, 692, 41], yaw: 5, pitch: 4, neck: [636, 746], sh: [[592, 762], [690, 770]], hip: [[640, 828], [716, 834]],
     arms: [{ e: [590, 826], w: [566, 796] }, { e: [702, 822], w: [650, 798] }],
     legs: [{ k: [560, 848], a: [470, 826], kf: true }, { k: [600, 880], a: [530, 872], kf: true }] },
 ];
@@ -348,22 +362,60 @@ function buildScene() {
     const ex = new V3(Math.cos(a), 0, -Math.sin(a)), ez = new V3(Math.sin(a), 0, Math.cos(a));
     m.position.copy(TL).addScaledVector(ex, w / 2).addScaledVector(ez, d / 2); m.position.y = 0.011; m.rotation.y = a; add(m, false); }
   // vases, red door, cabinet with the glowing glass
-  vase(-0.66, 6.95, 1.85, 1); vase(2.1, 8.4, 1.9, 1.05);
+  vase(-0.66, 6.95, 1.85, 0.74); vase(2.1, 8.4, 1.9, 0.76);
   { const g = new THREE.BoxGeometry(0.95, 2.55, 0.04); const m = new THREE.Mesh(g, mArch); m.position.set(1.95, 1.3, -8.0); m.rotation.z = -0.12; add(m); }
-  boxD(0.52, 1.4, 0, 1.4, 9.35, 9.9, mFurn);
-  { const m = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.75, 0.05), mGlow); m.position.set(0.95, 2.3, -9.85); add(m, false); }
-  boxD(0.82, 0.88, 1.4, 1.75, 9.6, 9.7, mFurn);
+  boxD(0.52, 1.4, 0, 1.4, 9.5, 10.1, mFurn);
+  buildMirror();
   figure(girls[0]); figure(girls[1]); figure(girls[2]); figure(girls[3]);
   { const c = onPlane(640, 852, 0.1); ell(c, 0.26, 0.07, 0.2, null, mFigD); }                              // Mary Louisa's skirt
   ball(onPlane(565, 800, 0.16), 0.11);                                                                        // the doll
 }
 
+/* ---------- The mirror on the back wall ---------- */
+const MZ = 10.15, MC = Pb(665, 165, MZ), MW = 0.28, MH = 0.82;      // centre of the glass, hung against the back wall
+const mirror = { yaw: 0, grp: new THREE.Group(), pt: null, rf: null };
+const mMetal = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.02 });
+function buildMirror() {
+  const g = mirror.grp; while (g.children.length) g.remove(g.children[0]);
+  g.position.copy(MC);
+  mirror.pt = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH), mMetal); mirror.pt.position.z = 0.012;
+  mirror.rf = new Reflector(new THREE.PlaneGeometry(MW, MH), { textureWidth: 512, textureHeight: 512, clipBias: 0.003, color: 0xbbbbbb }); mirror.rf.position.z = 0.012;
+  g.add(mirror.pt, mirror.rf);
+  const fm = (w, h, x, y) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), mFurn); b.position.set(x, y, 0); b.castShadow = b.receiveShadow = true; g.add(b); };
+  fm(MW + 0.08, 0.04, 0, MH / 2 + 0.02); fm(MW + 0.08, 0.04, 0, -MH / 2 - 0.02); fm(0.04, MH, -MW / 2 - 0.02, 0); fm(0.04, MH, MW / 2 + 0.02, 0);
+  g.rotation.y = deg(mirror.yaw); showMirrorFor(ptOn);
+  if (!g.parent) root.add(g);
+}
+function showMirrorFor(pathMode) { if (mirror.pt) { mirror.pt.visible = pathMode; mirror.rf.visible = !pathMode; } }
+function mirrorReport() {
+  const cam = new V3(0, HC, 0), yw = deg(mirror.yaw), n = new V3(Math.sin(yw), 0, Math.cos(yw)), e1 = new V3(Math.cos(yw), 0, -Math.sin(yw));
+  const d = MC.clone().sub(cam).normalize(), r = d.clone().addScaledVector(n, -2 * d.dot(n));
+  let txt = '';
+  if (r.z > 0.05) { const t0 = -MC.z / r.z, x0 = MC.x + t0 * r.x; txt += 'From the viewer, the reflected sight line reaches the viewer\u2019s depth <b>' + Math.abs(x0).toFixed(1) + ' m to the ' + (x0 < 0 ? 'left' : 'right') + '</b>. '; }
+  else txt += 'The reflected line runs away from the viewer. ';
+  const rows = LIGHTS.map(L => {
+    const P = L.light.position, side = P.clone().sub(MC).dot(n);
+    const Pp = P.clone().addScaledVector(n, -2 * side), den = Pp.clone().sub(cam).dot(n); let ok = false, miss = null;
+    if (side > 0 && Math.abs(den) > 1e-6) { const tt = MC.clone().sub(cam).dot(n) / den, Q = cam.clone().addScaledVector(Pp.clone().sub(cam), tt), lx = Q.clone().sub(MC).dot(e1), ly = Q.y - MC.y; ok = tt > 0 && Math.abs(lx) <= MW / 2 && Math.abs(ly) <= MH / 2; miss = Math.hypot(Math.max(0, Math.abs(lx) - MW / 2), Math.max(0, Math.abs(ly) - MH / 2)); }
+    return '<tr><td>' + L.name + '</td><td>' + (side <= 0 ? 'behind glass' : ok ? '<b style="color:var(--ok)">in the mirror</b>' : 'misses by ' + (miss * 100).toFixed(0) + ' cm') + '</td></tr>';
+  });
+  $('mirrorread').innerHTML = txt + '<table style="margin-top:8px">' + rows.join('') + '</table>';
+}
+function aimMirrorAt(L) {
+  let best = { yaw: 0, err: 1e9 }; const cam = new V3(0, HC, 0), P = L.light.position;
+  for (let y = -89; y <= 89; y += 0.25) { const yw = deg(y), n = new V3(Math.sin(yw), 0, Math.cos(yw)), e1 = new V3(Math.cos(yw), 0, -Math.sin(yw)), side = P.clone().sub(MC).dot(n); if (side <= 0) continue;
+    const Pp = P.clone().addScaledVector(n, -2 * side), den = Pp.clone().sub(cam).dot(n); if (Math.abs(den) < 1e-6) continue; const tt = MC.clone().sub(cam).dot(n) / den; if (tt <= 0) continue;
+    const Q = cam.clone().addScaledVector(Pp.clone().sub(cam), tt), err = Math.abs(Q.clone().sub(MC).dot(e1)); if (err < best.err) best = { yaw: y, err }; }
+  return best;
+}
+
 /* ---------- Lights ---------- */
 const LIGHTS = [
-  { id: 'a', name: 'Window at the front left', color: 0xe3a63c, on: true, az: -62, el: 24, dist: 5.2, int: 110, soft: 30, warm: 70, cone: 0.95, target: [0.0, 1.0, -6.0] },
-  { id: 'b', name: 'High light over the hall', color: 0x6fb7b0, on: true, az: 6, el: 68, dist: 5.0, int: 70, soft: 40, warm: 35, cone: 0.95, target: [0.3, 1.0, -5.8] },
-  { id: 'c', name: 'Glow from the vestibule', color: 0xe0776b, on: true, az: 180, el: 16, dist: 2.8, int: 60, soft: 20, warm: 85, cone: 1.1, target: [0.7, 1.0, -7.8] },
+  { id: 'a', name: 'Window at the front left', color: 0xe3a63c, on: true, az: -45, el: 24, dist: 5.2, int: 90, soft: 30, warm: 70, cone: 0.95, target: [0.0, 1.0, -6.0] },
+  { id: 'b', name: 'High light over the hall', color: 0x6fb7b0, on: true, az: 6, el: 68, dist: 5.0, int: 60, soft: 40, warm: 35, cone: 0.95, target: [0.3, 1.0, -5.8] },
+  { id: 'c', name: 'Far-left window (the one the mirror shows)', color: 0xe0776b, on: true, az: -88, el: 16, dist: 6.4, int: 90, soft: 25, warm: 75, cone: 0.95, target: [0.0, 1.2, -5.8], panel: true },
 ];
+const mPanel = new THREE.MeshStandardMaterial({ color: 0x222018, emissive: 0xfff0d0, emissiveIntensity: 3, roughness: 1, side: THREE.DoubleSide });
 const hemi = new THREE.HemisphereLight(0xffe9cc, 0x2a2018, 0.08); scene.add(hemi);
 const gizmos = new THREE.Group(); scene.add(gizmos);
 LIGHTS.forEach(L => {
@@ -373,6 +425,7 @@ LIGHTS.forEach(L => {
   const pts = new THREE.Points(new THREE.BufferGeometry().setFromPoints([new V3()]), new THREE.PointsMaterial({ color: L.color, size: 16, sizeAttenuation: false }));
   const ln = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new V3(), new V3()]), new THREE.LineBasicMaterial({ color: L.color }));
   const grp = new THREE.Group(); grp.add(pts, ln); L.giz = grp; L.ln = ln; gizmos.add(grp);
+  if (L.panel) { L.pm = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 2.3), mPanel); scene.add(L.pm); }
 });
 const cool = new THREE.Color(0xcfe0ff), warm = new THREE.Color(0xffd9a0);
 function syncLights() {
@@ -381,10 +434,11 @@ function syncLights() {
     L.light.position.set(L.t.x + L.dist * Math.cos(el) * Math.sin(az), L.t.y + L.dist * Math.sin(el), L.t.z + L.dist * Math.cos(el) * Math.cos(az));
     L.light.intensity = L.on ? L.int : 0; L.light.castShadow = L.on; L.light.radius = L.soft / 100; L.light.shadow.radius = 2 + L.soft / 4;
     L.light.color.copy(cool).lerp(warm, L.warm / 100);
+    if (L.pm) { L.pm.position.copy(L.light.position); L.pm.lookAt(L.t); L.pm.visible = L.on; L.light.position.addScaledVector(L.t.clone().sub(L.light.position).normalize(), 0.2); mPanel.emissiveIntensity = 3 * L.int / 90; mPanel.emissive.copy(L.light.color); }
     L.giz.position.copy(L.light.position); const p = L.ln.geometry.attributes.position; p.setXYZ(1, L.t.x - L.light.position.x, L.t.y - L.light.position.y, L.t.z - L.light.position.z); p.needsUpdate = true;
     const el2 = $('lb-' + L.id); if (el2) { el2.classList.toggle('off', !L.on); }
   });
-  hemi.intensity = +$('fill').value / 100; renderer.toneMappingExposure = +$('exp').value;
+  hemi.intensity = +$('fill').value / 100; renderer.toneMappingExposure = +$('exp').value; if (typeof mirrorReport === 'function' && mirror.pt) mirrorReport();
   $('o-fill').textContent = $('fill').value + '%'; $('o-exp').textContent = (+$('exp').value).toFixed(2);
   if (pt) { pt.updateLights(); pt.reset(); } changed = true; scoreSoon();
 }
@@ -459,10 +513,11 @@ function status(msg) { const s = $('status'); s.textContent = msg || ''; s.style
 function resetPT() { changed = true; if (pt && ptOn) pt.updateCamera(); }
 async function enablePT() {
   status('Building light-transport structure…'); await new Promise(r => setTimeout(r, 60));
-  try { if (!pt) { pt = new WebGLPathTracer(renderer); pt.bounces = +$('bounces').value; pt.tiles.set(2, 2); pt.renderDelay = 0; pt.minSamples = 1; pt.fadeDuration = 0; pt.filterGlossyFactor = 0.5; } pt.setScene(scene, camera); ptOn = true; status(''); }
+  showMirrorFor(true);
+  try { if (!pt) { pt = new WebGLPathTracer(renderer); pt.bounces = +$('bounces').value; pt.tiles.set(2, 2); pt.renderDelay = 0; pt.minSamples = 1; pt.fadeDuration = 0; pt.filterGlossyFactor = 0.5; } pt.setScene(scene, camera); ptOn = true; showMirrorFor(true); status(''); }
   catch (err) { console.error(err); ptOn = false; $('m-raster').checked = true; status('Path tracing is not available in this browser'); setTimeout(() => status(''), 3500); }
 }
-document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', async () => { if (r.value === 'path' && r.checked) await enablePT(); else if (r.checked) ptOn = false; $('samples').textContent = '0'; }));
+document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', async () => { if (r.value === 'path' && r.checked) await enablePT(); else if (r.checked) { ptOn = false; showMirrorFor(false); } $('samples').textContent = '0'; }));
 $('bounces').addEventListener('input', e => { $('o-bounces').textContent = e.target.value; if (pt) { pt.bounces = +e.target.value; pt.reset(); } });
 ['exp', 'fill'].forEach(id => $(id).addEventListener('input', syncLights));
 
@@ -482,6 +537,8 @@ function scoreNow() {
 }
 let scoreTimer = null;
 function scoreSoon() { clearTimeout(scoreTimer); scoreTimer = setTimeout(() => { const r = scoreNow(); $('score').textContent = r == null ? '–' : r.toFixed(2); }, 250); }
+$('myaw').addEventListener('input', e => { mirror.yaw = +e.target.value; mirror.grp.rotation.y = deg(mirror.yaw); $('o-myaw').textContent = mirror.yaw + '\u00b0'; mirrorReport(); if (pt) { pt.updateScene ? pt.updateScene() : pt.setScene(scene, camera); pt.reset(); } changed = true; });
+$('aim').addEventListener('click', () => { const L = LIGHTS[2]; const b = aimMirrorAt(L); mirror.yaw = b.yaw; $('myaw').value = b.yaw; $('o-myaw').textContent = b.yaw.toFixed(0) + '\u00b0'; mirror.grp.rotation.y = deg(b.yaw); mirrorReport(); if (pt && ptOn) pt.setScene(scene, camera); changed = true; });
 $('testall').addEventListener('click', async () => {
   if (ptOn) { $('m-raster').checked = true; ptOn = false; }
   if (view !== 'painter') applyView('painter');
