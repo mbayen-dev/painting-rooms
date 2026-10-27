@@ -162,9 +162,9 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
   <details open>
     <summary><h2>What is the mirror reflecting?</h2></summary>
     <div class="body">
-      <p class="note">The small glass on the back wall shows a bright window. It hangs on a wall facing the viewer, so a ray from the viewer reflects straight back across the room. Turn it to test other mounts.</p>
-      <label class="row"><span>Mirror turn</span><input type="range" id="myaw" min="-80" max="80" step="1" value="0"><output id="o-myaw">0\u00b0</output></label>
-      <button class="btn" id="aim">Turn it to catch the far-left window</button>
+      <p class="note">The mirror hangs flat on the alcove's right wall, across from the vase, and faces left. The viewer sees it edge-on. The dashed line is the viewer's sight line into the glass and out again.</p>
+      <label class="row"><span>Wall position</span><input type="range" id="wallx" min="70" max="150" step="1" value="100"><output id="o-wallx">1.00 m</output></label>
+      <label class="chk"><input type="checkbox" id="sightchk"> Show the sight line</label>
       <div class="stat" id="mirrorread"></div>
       <p class="note">In Fast preview the glass is a true planar reflection. In Path traced mode it reflects with full bounces.</p>
     </div>
@@ -236,7 +236,7 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
       <p class="note"><span class="tag">Measured</span> Floor positions of the four girls, the vases, the rug outline, the left wall line.</p>
       <p class="note"><span class="tag">Inferred</span> Camera height, focal length, the depth of the walls and alcove, the cabinet and the red door.</p>
       <p class="note"><span class="tag">Invented</span> Light positions other than the direction of the far-left window, the ceiling and anything outside the frame, hidden bodies, the room to the right of the red door.</p>
-      <p class="note"><b>Review note.</b> The focal length assumes the picture's centre is the viewer's axis. If the axis sits further right, f rises (about 2000 px at column 700), and the direction the mirror reflects changes. With a mirror hung flat on the back wall, a ray from a viewer left of the glass reflects to the viewer's right, not the far left. A far-left window only shows in the glass if the glass is turned toward the left (about 35 degrees) or the viewer's axis lies to the right of the glass. Use the mirror turn control to test.</p>
+      <p class="note"><b>Review note.</b> The focal length assumes the picture's centre is the viewer's axis. If the axis sits further right, f rises (about 2000 px at column 700). The bright strip lines up with a wall at x = 1.0 m running from depth 8.1 m to the back corner, which is why the wall position is a slider. With a mirror flat on that wall, the sight line cannot reach a window far to the left of the room, so check how the far-left light is meant to be seen.</p>
     </div>
   </details>
 </aside>
@@ -364,49 +364,48 @@ function buildScene() {
   // vases, red door, cabinet with the glowing glass
   vase(-0.66, 6.95, 1.85, 0.74); vase(2.1, 8.4, 1.9, 0.76);
   { const g = new THREE.BoxGeometry(0.95, 2.55, 0.04); const m = new THREE.Mesh(g, mArch); m.position.set(1.95, 1.3, -8.0); m.rotation.z = -0.12; add(m); }
-  boxD(0.52, 1.4, 0, 1.4, 9.5, 10.1, mFurn);
+  boxD(Math.max(0.1, XW - 0.7), XW - 0.05, 0, 1.4, 9.5, 10.1, mFurn);
+  { const m = new THREE.Mesh(new THREE.PlaneGeometry(MZ1 - 8.0, 4.6), mArch); m.rotation.y = -Math.PI / 2; m.position.set(XW, 2.3, -(8.0 + MZ1) / 2); add(m); }   // the alcove's right wall, a short segment at the back
   buildMirror();
   figure(girls[0]); figure(girls[1]); figure(girls[2]); figure(girls[3]);
   { const c = onPlane(640, 852, 0.1); ell(c, 0.26, 0.07, 0.2, null, mFigD); }                              // Mary Louisa's skirt
   ball(onPlane(565, 800, 0.16), 0.11);                                                                        // the doll
 }
 
-/* ---------- The mirror on the back wall ---------- */
-const MZ = 10.15, MC = Pb(665, 165, MZ), MW = 0.28, MH = 0.82;      // centre of the glass, hung against the back wall
-const mirror = { yaw: 0, grp: new THREE.Group(), pt: null, rf: null };
+/* ---------- The mirror: flat on the alcove's right wall, across from the vase ---------- */
+let XW = 1.0;                                                       // x of that wall
+const MZ0 = 8.1, MZ1 = 10.15, MW = MZ1 - MZ0, MH = 0.75, MY = 2.2;   // runs along the wall from depth 8.1 to the back corner
+let MC = new V3(XW, MY, -(MZ0 + MZ1) / 2);
+const mirror = { grp: new THREE.Group(), pt: null, rf: null };
 const mMetal = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 1, roughness: 0.02 });
+const NRM = new V3(-1, 0, 0), E1 = new V3(0, 0, 1);                  // the glass faces the vase side (-x); its width runs along depth
 function buildMirror() {
+  MC = new V3(XW, MY, -(MZ0 + MZ1) / 2);
   const g = mirror.grp; while (g.children.length) g.remove(g.children[0]);
-  g.position.copy(MC);
+  g.position.copy(MC); g.rotation.set(0, -Math.PI / 2, 0);
   mirror.pt = new THREE.Mesh(new THREE.PlaneGeometry(MW, MH), mMetal); mirror.pt.position.z = 0.012;
-  mirror.rf = new Reflector(new THREE.PlaneGeometry(MW, MH), { textureWidth: 512, textureHeight: 512, clipBias: 0.003, color: 0xbbbbbb }); mirror.rf.position.z = 0.012;
+  mirror.rf = new Reflector(new THREE.PlaneGeometry(MW, MH), { textureWidth: 1024, textureHeight: 512, clipBias: 0.003, color: 0xbbbbbb }); mirror.rf.position.z = 0.012;
   g.add(mirror.pt, mirror.rf);
   const fm = (w, h, x, y) => { const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.03), mFurn); b.position.set(x, y, 0); b.castShadow = b.receiveShadow = true; g.add(b); };
   fm(MW + 0.08, 0.04, 0, MH / 2 + 0.02); fm(MW + 0.08, 0.04, 0, -MH / 2 - 0.02); fm(0.04, MH, -MW / 2 - 0.02, 0); fm(0.04, MH, MW / 2 + 0.02, 0);
-  g.rotation.y = deg(mirror.yaw); showMirrorFor(ptOn);
-  if (!g.parent) root.add(g);
+  showMirrorFor(ptOn); root.add(g);
 }
 function showMirrorFor(pathMode) { if (mirror.pt) { mirror.pt.visible = pathMode; mirror.rf.visible = !pathMode; } }
+const sight = new THREE.Line(new THREE.BufferGeometry(), new THREE.LineDashedMaterial({ color: 0xe3a63c, dashSize: 0.2, gapSize: 0.12 })); sight.visible = false; scene.add(sight);
 function mirrorReport() {
-  const cam = new V3(0, HC, 0), yw = deg(mirror.yaw), n = new V3(Math.sin(yw), 0, Math.cos(yw)), e1 = new V3(Math.cos(yw), 0, -Math.sin(yw));
-  const d = MC.clone().sub(cam).normalize(), r = d.clone().addScaledVector(n, -2 * d.dot(n));
-  let txt = '';
-  if (r.z > 0.05) { const t0 = -MC.z / r.z, x0 = MC.x + t0 * r.x; txt += 'From the viewer, the reflected sight line reaches the viewer\u2019s depth <b>' + Math.abs(x0).toFixed(1) + ' m to the ' + (x0 < 0 ? 'left' : 'right') + '</b>. '; }
-  else txt += 'The reflected line runs away from the viewer. ';
+  const cam = new V3(0, HC, 0), zp = F0 * XW / (680 - UC);                        // where the viewer sees the middle of the bright strip
+  const P = new V3(XW, HC + (VH - 165) * zp / F0, -zp), d = P.clone().sub(cam).normalize(), r = d.clone().addScaledVector(NRM, -2 * d.dot(NRM));
+  const tBack = (-10.2 - P.z) / r.z, hit = P.clone().addScaledVector(r, tBack), far = P.clone().addScaledVector(r, 25);
+  sight.geometry.setFromPoints([cam, P, far]); sight.computeLineDistances();
+  const ang = Math.atan2(Math.abs(r.x), -r.z) * 180 / Math.PI;
+  let txt = 'The viewer sees the bright strip at <b>' + ang.toFixed(0) + '\u00b0</b> off straight ahead. A mirror on a side wall keeps the depth direction and only flips sideways, so the reflected sight line keeps heading <b>deeper</b>, drifting left at that same ' + ang.toFixed(0) + '\u00b0. It meets the back wall after ' + tBack.toFixed(1) + ' m at x = <b>' + hit.x.toFixed(2) + ' m</b>. It never turns back toward the room or the left wall.';
   const rows = LIGHTS.map(L => {
-    const P = L.light.position, side = P.clone().sub(MC).dot(n);
-    const Pp = P.clone().addScaledVector(n, -2 * side), den = Pp.clone().sub(cam).dot(n); let ok = false, miss = null;
-    if (side > 0 && Math.abs(den) > 1e-6) { const tt = MC.clone().sub(cam).dot(n) / den, Q = cam.clone().addScaledVector(Pp.clone().sub(cam), tt), lx = Q.clone().sub(MC).dot(e1), ly = Q.y - MC.y; ok = tt > 0 && Math.abs(lx) <= MW / 2 && Math.abs(ly) <= MH / 2; miss = Math.hypot(Math.max(0, Math.abs(lx) - MW / 2), Math.max(0, Math.abs(ly) - MH / 2)); }
-    return '<tr><td>' + L.name + '</td><td>' + (side <= 0 ? 'behind glass' : ok ? '<b style="color:var(--ok)">in the mirror</b>' : 'misses by ' + (miss * 100).toFixed(0) + ' cm') + '</td></tr>';
+    const Lp = L.light.position, side = Lp.clone().sub(MC).dot(NRM);
+    const Pp = Lp.clone().addScaledVector(NRM, -2 * side), den = Pp.clone().sub(cam).dot(NRM); let ok = false, miss = null;
+    if (side > 0 && Math.abs(den) > 1e-6) { const tt = MC.clone().sub(cam).dot(NRM) / den, Q = cam.clone().addScaledVector(Pp.clone().sub(cam), tt), lx = Q.clone().sub(MC).dot(E1), ly = Q.y - MC.y; ok = tt > 0 && Math.abs(lx) <= MW / 2 && Math.abs(ly) <= MH / 2; miss = Math.hypot(Math.max(0, Math.abs(lx) - MW / 2), Math.max(0, Math.abs(ly) - MH / 2)); }
+    return '<tr><td>' + L.name + '</td><td>' + (side <= 0 ? 'behind the glass' : ok ? '<b style="color:var(--ok)">in the mirror</b>' : 'misses by ' + miss.toFixed(1) + ' m') + '</td></tr>';
   });
   $('mirrorread').innerHTML = txt + '<table style="margin-top:8px">' + rows.join('') + '</table>';
-}
-function aimMirrorAt(L) {
-  let best = { yaw: 0, err: 1e9 }; const cam = new V3(0, HC, 0), P = L.light.position;
-  for (let y = -89; y <= 89; y += 0.25) { const yw = deg(y), n = new V3(Math.sin(yw), 0, Math.cos(yw)), e1 = new V3(Math.cos(yw), 0, -Math.sin(yw)), side = P.clone().sub(MC).dot(n); if (side <= 0) continue;
-    const Pp = P.clone().addScaledVector(n, -2 * side), den = Pp.clone().sub(cam).dot(n); if (Math.abs(den) < 1e-6) continue; const tt = MC.clone().sub(cam).dot(n) / den; if (tt <= 0) continue;
-    const Q = cam.clone().addScaledVector(Pp.clone().sub(cam), tt), err = Math.abs(Q.clone().sub(MC).dot(e1)); if (err < best.err) best = { yaw: y, err }; }
-  return best;
 }
 
 /* ---------- Lights ---------- */
@@ -537,8 +536,13 @@ function scoreNow() {
 }
 let scoreTimer = null;
 function scoreSoon() { clearTimeout(scoreTimer); scoreTimer = setTimeout(() => { const r = scoreNow(); $('score').textContent = r == null ? '–' : r.toFixed(2); }, 250); }
-$('myaw').addEventListener('input', e => { mirror.yaw = +e.target.value; mirror.grp.rotation.y = deg(mirror.yaw); $('o-myaw').textContent = mirror.yaw + '\u00b0'; mirrorReport(); if (pt) { pt.updateScene ? pt.updateScene() : pt.setScene(scene, camera); pt.reset(); } changed = true; });
-$('aim').addEventListener('click', () => { const L = LIGHTS[2]; const b = aimMirrorAt(L); mirror.yaw = b.yaw; $('myaw').value = b.yaw; $('o-myaw').textContent = b.yaw.toFixed(0) + '\u00b0'; mirror.grp.rotation.y = deg(b.yaw); mirrorReport(); if (pt && ptOn) pt.setScene(scene, camera); changed = true; });
+function rebuildScene() {
+  while (root.children.length) { const o = root.children.pop(); o.traverse(c => { if (c.geometry && c !== mirror.pt?.geometry) c.geometry.dispose(); }); }
+  buildScene(); syncLights(); if (ptOn && pt) pt.setScene(scene, camera); changed = true;
+}
+let wallTimer = null;
+$('wallx').addEventListener('input', e => { XW = e.target.value / 100; $('o-wallx').textContent = XW.toFixed(2) + ' m'; clearTimeout(wallTimer); wallTimer = setTimeout(rebuildScene, 120); });
+$('sightchk').addEventListener('change', e => { sight.visible = e.target.checked; changed = true; });
 $('testall').addEventListener('click', async () => {
   if (ptOn) { $('m-raster').checked = true; ptOn = false; }
   if (view !== 'painter') applyView('painter');
