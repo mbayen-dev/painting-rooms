@@ -362,7 +362,7 @@ function buildFigure(s) {
   if (s.skirt) {
     const w = Pb(s.skirt.waist[0], s.skirt.waist[1], s.z), h = onPlane(s.skirt.hem[0], s.skirt.hem[1], 0).setY(0.04);
     const Ld = w.distanceTo(h);
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(s.skirt.waist[2], s.skirt.hem[2], Ld, 28, 1, true), mFigD);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(s.skirt.hem[2], s.skirt.waist[2], Ld, 28, 1, true), mFigD);
     m.position.copy(w).add(h).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, h.clone().sub(w).normalize()); add(m);
   }
   if (s.palette) { const [u, v, w, h] = s.palette; ell(Pb(u, v, s.z - 0.1), R(w, s.z), R(h, s.z) * 0.25, R(h, s.z), null); }

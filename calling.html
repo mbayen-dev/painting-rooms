@@ -378,7 +378,7 @@ function buildFigure(s) {
   if (s.robe) {
     const [t, b] = s.robe, A = P(t[0], t[1], s.z), B = onPlane(b[0], Math.min(b[1], 1000), 0).setY(0.3);
     const L = A.distanceTo(B);
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(t[2], b[2], L, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0xcdbfad, roughness: 0.9, side: THREE.DoubleSide }));
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(b[2], t[2], L, 24, 1, true), new THREE.MeshStandardMaterial({ color: 0xcdbfad, roughness: 0.9, side: THREE.DoubleSide }));
     m.position.copy(A).add(B).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, B.clone().sub(A).normalize()); add(m);
   }
   if (s.staff) limb(P(s.staff[0][0], s.staff[0][1], s.z), P(s.staff[1][0], s.staff[1][1], s.z), 0.017, 0.017);

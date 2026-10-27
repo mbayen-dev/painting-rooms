@@ -305,7 +305,7 @@ function figure(s, M = mFig, MD = mFigD) {
   s.arms.forEach((a, i) => { const E = J(a.e), W = J(a.w); limb(sh[i], E, 0.045, 0.038, M); limb(E, W, 0.038, 0.03, M); ell(W, 0.04, 0.045, 0.03, null, M); });
   if (s.skirt) {
     const w = Pb(s.skirt.waist[0], s.skirt.waist[1], s.z), h = onPlane(s.skirt.hem[0], s.skirt.hem[1], 0).setY(0.03);
-    const m = new THREE.Mesh(new THREE.CylinderGeometry(s.skirt.waist[2], s.skirt.hem[2], w.distanceTo(h), 28, 1, true), MD);
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(s.skirt.hem[2], s.skirt.waist[2], w.distanceTo(h), 28, 1, true), MD);
     m.position.copy(w).add(h).multiplyScalar(0.5); m.quaternion.setFromUnitVectors(UP, h.clone().sub(w).normalize()); add(m);
   }
 }
