@@ -17,6 +17,8 @@
   --ink-dim: #a69c9c;
   --ochre: #e3a63c;
   --ghost: #6fb7b0;
+  --ok: #8fc28a;
+  --bad: #e0776b;
   --f-display: "Bricolage Grotesque", "Helvetica Neue", Arial, sans-serif;
   --f-body: "IBM Plex Sans", system-ui, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
@@ -73,7 +75,12 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
 .theories small { color: var(--ink-dim); font: 400 11.5px/1.4 var(--f-body); }
 .theories label:has(input:checked) { border-color: var(--ochre); background: rgba(227, 166, 60, 0.08); }
 .theories label:has(input:focus-visible) { outline: 2px solid var(--ochre); }
-#theoryread { border-left: 2px solid var(--ochre); padding-left: 10px; }
+#theoryread { display: grid; gap: 10px; font: 400 12.5px/1.45 var(--f-body); color: var(--ink-dim); }
+#theoryread .blk { border-left: 2px solid var(--line); padding-left: 10px; }
+#theoryread .lab { display: block; font: 500 10px var(--f-mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ochre); margin-bottom: 3px; }
+#theoryread b { color: var(--ink); font-weight: 500; }
+.v { font: 500 10px var(--f-mono); letter-spacing: 0.06em; padding: 1px 6px; margin-left: 6px; text-transform: uppercase; color: var(--ground); }
+.v.ok { background: var(--ok); } .v.warn { background: var(--ochre); } .v.bad { background: var(--bad); }
 #toggle { display: none; }
 #measure-label { position: absolute; font: 500 11px var(--f-mono); background: var(--ochre); color: var(--ground); padding: 2px 6px; pointer-events: none; transform: translate(-50%, -140%); display: none; }
 #hint { position: absolute; left: 16px; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); font: 400 11px var(--f-mono); color: var(--ink-dim); max-width: 26ch; }
@@ -134,7 +141,7 @@ td:first-child { color: var(--ink-dim); padding-right: 8px; }
         <label><input type="radio" name="theory" value="2"><b>The mirror reflects the canvas</b><small>Snyder and Cohen. The royals appear because their portrait is on the easel. Switch to path traced to watch the mirror show it.</small></label>
         <label><input type="radio" name="theory" value="3"><b>Painted from a large mirror</b><small>The room we see is a reflection. The real studio sits behind the viewer, mirrored through a big glass at the picture plane.</small></label>
       </div>
-      <div class="stat" id="theoryread"></div>
+      <div id="theoryread"></div>
     </div>
   </details>
   <details open>
@@ -428,35 +435,50 @@ function ghostPerson(x, d, tall = 1) {
 }
 const theoryLines = new THREE.Group(); scene.add(theoryLines);
 let mirrorWorld = null;
+function card(desc, how, kind, label, math) {
+  return '<p class="note">' + desc + '</p><div class="blk"><span class="lab">How he would have painted it</span>' + how + '</div>' +
+    '<div class="blk"><span class="lab">Does the maths work? <span class="v ' + kind + '">' + label + '</span></span>' + math + '</div>';
+}
 function buildTheory() {
   theoryLines.clear(); if (mirrorWorld) { scene.remove(mirrorWorld); mirrorWorld = null; }
   const readEl = $('theoryread'); const cam = new V3(0, HC, 0);
   const dir = mirrorCentre.clone().sub(cam).normalize(), refl = new V3(dir.x, dir.y, -dir.z);
-  const tCam = -mirrorCentre.z / refl.z * 1;                                  // distance back to Z=0
   const atCam = mirrorCentre.clone().addScaledVector(refl, (0 - mirrorCentre.z) / refl.z);
-  const dc = 2.5 * K, tC = (mirrorCentre.z + dc) / -refl.z;                   // reflect back to the canvas plane
-  const atCanvas = mirrorCentre.clone().addScaledVector(refl, (-dc - mirrorCentre.z) / refl.z);
+  const dc = 2.5 * K, atCanvas = mirrorCentre.clone().addScaledVector(refl, (-dc - mirrorCentre.z) / refl.z);
   const line = (a, b, color) => { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints([a, b]), new THREE.LineDashedMaterial({ color, dashSize: 0.08, gapSize: 0.05 })); l.computeLineDistances(); theoryLines.add(l); };
-  if (theory === 0) readEl.innerHTML = 'The model alone. Everything is placed from the painting. Choose a theory to see how it changes the story.';
+  if (theory === 0) {
+    readEl.innerHTML = card('The room alone, placed from the painting’s pixels.',
+      'On paper first: a perspective grid with one vanishing point in the doorway, then each figure dropped in from separate studies. A court painter with a library of optics books could build it this way.',
+      'ok', 'Yes', 'Both ceiling lamps return the same height (3.38 m) and the same side offset, and the doorway, mirror and pictures all come out at sensible sizes.');
+  }
   if (theory === 1) {
     ghostPerson(-0.3, 0); ghostPerson(0.3, 0);
     line(cam, mirrorCentre, 0xa69c9c); line(mirrorCentre, atCam, 0xe3a63c);
-    readEl.innerHTML = 'Seen from the camera, the mirror reflects the point <b>' + Math.abs(atCam.x).toFixed(2) + ' m to the left</b> of the viewing axis. The royals at the camera would not appear in it, so the glass is not showing them directly.';
+    readEl.innerHTML = card('Philip IV and Mariana stand at the camera, in front of the picture, looking in.',
+      'Velázquez stands behind the easel and looks around it at the royals, painting them on the canvas whose back we see. For the finished picture he must invent the view from where they stand, since he never stood there himself.',
+      'bad', 'No', 'Seen from the camera, the mirror on the back wall reflects the point <b>' + Math.abs(atCam.x).toFixed(2) + ' m to the left</b> of the viewing axis. For the royals to appear in it they would have to stand there, not at the axis. The orange line shows the reflection.');
   }
   if (theory === 2) {
     line(cam, mirrorCentre, 0xa69c9c); line(mirrorCentre, atCanvas, 0xe3a63c);
     for (const x of [-2.55, -2.0]) { const g = new THREE.Group(); const prev = cur; cur = g; ell(new V3(x, 1.35, Z(2.5) - 0.12), 0.1, 0.13, 0.06, null, mGhost); ell(new V3(x, 0.95, Z(2.5) - 0.1), 0.22, 0.34, 0.05, null, mGhost); cur = prev; theoryLines.add(g); }
     const inside = atCanvas.x < -0.96 && atCanvas.x > -3.6;
-    readEl.innerHTML = 'The mirror ray, bounced back from the glass, lands <b>' + Math.abs(atCanvas.x).toFixed(2) + ' m</b> left of the viewing axis at the canvas plane. The canvas spans 0.96 to 3.60 m, so the ray ' + (inside ? '<b>lands on the canvas face</b>' : '<b>misses the canvas</b>') + '. Two portrait busts sit there. In path tracing the mirror shows them.';
+    readEl.innerHTML = card('The royals are not in the room. Their double portrait is on the easel, facing the back wall and the mirror.',
+      'He paints the royal portrait first. He then sets the large canvas so its face turns toward the mirror, and paints what the mirror picks up. The result is a picture of a picture.',
+      inside ? 'ok' : 'warn', inside ? 'Yes' : 'Barely', 'The mirror ray lands <b>' + Math.abs(atCanvas.x).toFixed(2) + ' m</b> left of the axis at the canvas plane, and the canvas spans 0.96 to 3.60 m, so it ' + (inside ? '<b>lands on the canvas face</b>' : '<b>misses the canvas</b>') + '. Switch to path tracing and the mirror shows the two teal busts. One loose end: the figures still look out at the viewer, so someone is meant to be there.');
   }
   if (theory === 3) {
-    const dm = 0.6 * K, hw = (IW / 2 + 40) * dm / (F0 * K), top = (VH + 60) * dm / (F0 * K), bot = (IH - VH + 60) * dm / (F0 * K), cx = (IW / 2 - UC) * dm / (F0 * K);
-    const frame = new THREE.Group(), fm = mGhost;
-    const bx = (w, h, x, y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.05), fm); m.position.set(x, y, -dm); frame.add(m); };
-    bx(2 * hw, 0.06, cx, HC + top); bx(2 * hw, 0.06, cx, HC - bot); bx(0.06, top + bot, cx - hw, HC + (top - bot) / 2); bx(0.06, top + bot, cx + hw, HC + (top - bot) / 2);
+    const dm = 1.85 * K, F = F0 * K, wFrame = (IW + 60) * dm / F, hFrame = (IH + 120) * dm / F;
+    const hw = wFrame / 2, top = (VH + 60) * dm / F, bot = (IH - VH + 60) * dm / F, cx = (IW / 2 - UC) * dm / F, t = 0.1;
+    const frame = new THREE.Group();
+    const bx = (w, h, x, y) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, 0.08), mGhost); m.position.set(x, y, -dm); frame.add(m); };
+    bx(wFrame + 2 * t, t, cx, HC + top + t / 2); bx(wFrame + 2 * t, t, cx, HC - bot - t / 2);
+    bx(t, top + bot, cx - hw - t / 2, HC + (top - bot) / 2); bx(t, top + bot, cx + hw + t / 2, HC + (top - bot) / 2);
     theoryLines.add(frame);
-    mirrorWorld = new THREE.Group(); const cl = root.clone(true); mirrorWorld.add(cl); mirrorWorld.scale.z = -1; mirrorWorld.position.z = -2 * dm; scene.add(mirrorWorld);
-    readEl.innerHTML = 'A large glass stands at the picture plane. The real studio is its mirror image, <b>behind the viewer</b> and left-right reversed. Velázquez worked from the reflection, so the scene on the canvas is what the mirror showed him. Use Orbit to see both rooms.';
+    mirrorWorld = new THREE.Group(); mirrorWorld.add(root.clone(true)); mirrorWorld.scale.z = -1; mirrorWorld.position.z = -2 * dm; scene.add(mirrorWorld);
+    const nIn = figs.filter(f => f.z < 2.78).length;
+    readEl.innerHTML = card('A large glass stands in front of the picture. The room we see is its reflection, and the real studio is its mirror image behind the viewer.',
+      'He stands beside a canvas and copies what the glass shows. Every figure’s real position is the reflection of its painted one. Use Orbit to see both rooms.',
+      'warn', 'Two problems', '<b>Handedness.</b> The reflection of a right-handed painter holds the brush on the viewer’s right. Velázquez holds it on the viewer’s left, so the picture is not a straight copy of a mirror, unless it was flipped back or he was left-handed.<br><br><b>Size.</b> The teal frame is ' + (wFrame).toFixed(2) + ' × ' + (hFrame).toFixed(2) + ' m, the picture’s own window at ' + (dm).toFixed(1) + ' m. At the canvas’s real size (2.76 × 3.18 m) the glass would sit ' + (2.78 * K).toFixed(1) + ' m away and cut through ' + nIn + ' figures and the dog. Mirrors of his day were generally much smaller, roughly a metre across.');
   }
 }
 
