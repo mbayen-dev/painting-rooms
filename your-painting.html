@@ -179,7 +179,21 @@ input[type=number] { width: 72px; background: var(--ground); color: var(--ink); 
     <summary><h2>1. Your painting</h2></summary>
     <div class="body">
       <div class="btns"><button class="btn" id="choose2" type="button">Choose another image</button><button class="btn" id="example2" type="button">Sargent example</button></div>
-      <p class="note">Switch to Trace to mark the image. Use the other views to see the model.</p>
+      <p class="note">Use Trace to mark the image by hand. Use the other views to see the model.</p>
+    </div>
+  </details>
+  <details open>
+    <summary><h2>Automatic draft</h2></summary>
+    <div class="body">
+      <p class="note">An image-reading model in your browser guesses how far away every part of the picture is, and the page turns that into a first 3D draft. It is a rough guess, not a measurement. Refine it with the steps below.</p>
+      <div class="btns"><button class="btn solid" id="estimate" type="button">Build a draft from the image</button></div>
+      <label class="chk"><input type="checkbox" id="auto" checked> Build automatically when I upload</label>
+      <label class="chk"><input type="checkbox" id="showrelief" checked> Show the draft</label>
+      <label class="chk"><input type="checkbox" id="paint"> Show the painted surface</label>
+      <label class="row"><span>Nearest</span><input type="range" id="near" min="5" max="800" step="5" value="200"><output id="o-near"></output></label>
+      <label class="row"><span>Farthest</span><input type="range" id="far" min="100" max="4000" step="10" value="1200"><output id="o-far"></output></label>
+      <label class="row"><span>Detail</span><input type="range" id="detail" min="80" max="320" step="16" value="192"><output id="o-detail"></output></label>
+      <div class="msg" id="dmsg" role="status"></div>
     </div>
   </details>
   <details open>
@@ -244,7 +258,7 @@ input[type=number] { width: 72px; background: var(--ground); color: var(--ink); 
       <div class="stat">Path tracing lets light bounce for real. Samples: <b id="samples">0</b></div>
       <label class="row"><span>Bounces</span><input type="range" id="bounces" min="1" max="8" step="1" value="5"><output id="o-bounces">5</output></label>
       <label class="row"><span>Exposure</span><input type="range" id="exp" min="0.3" max="3" step="0.05" value="1"><output id="o-exp"></output></label>
-      <label class="row"><span>Fill (preview)</span><input type="range" id="fill" min="0" max="100" step="1" value="12"><output id="o-fill"></output></label>
+      <label class="row"><span>Fill (preview)</span><input type="range" id="fill" min="0" max="100" step="1" value="35"><output id="o-fill"></output></label>
     </div>
   </details>
   <details>
@@ -277,7 +291,7 @@ import { PhysicalSpotLight, WebGLPathTracer } from 'three-gpu-pathtracer';
 
 const $ = id => document.getElementById(id);
 const V3 = THREE.Vector3, deg = THREE.MathUtils.degToRad, UP = new V3(0, 1, 0);
-const S = { IW: 1000, IH: 1000, hfov: 40, hc: 1.5, hor: 0.45, objs: [], tool: null, pend: null, ref: null, nid: 1, loaded: false };
+const S = { IW: 1000, IH: 1000, hfov: 40, hc: 1.5, hor: 0.45, objs: [], tool: null, pend: null, ref: null, nid: 1, loaded: false, depth: null, near: 2, far: 12, detail: 192, paint: false, showRelief: true, auto: true };
 const F = () => (S.IW / 2) / Math.tan(deg(S.hfov / 2)), VH = () => S.hor * S.IH, UC = () => S.IW / 2;
 const Pw = (u, v, z) => new V3((u - UC()) * z / F(), S.hc + (VH() - v) * z / F(), -z);
 const floorZ = v => F() * S.hc / (v - VH());
@@ -313,10 +327,73 @@ function vase(x, z, H, d) {
   const pts = [[0, 0], [0.16, 0], [0.2, 0.05], [0.26, 0.2], [0.3, 0.5], [0.28, 0.9], [0.2, 1.15], [0.12, 1.3], [0.1, 1.45], [0.14, 1.62], [0.26, 1.82], [0.3, 1.88]].map(([r, h]) => new THREE.Vector2(r / 0.3 * d / 2, h * H / 1.88));
   const m = new THREE.Mesh(new THREE.LatheGeometry(pts, 32), mFigD); m.position.set(x, 0, -z); add(m);
 }
+/* ---------- Automatic draft: a relief built from an estimated depth map ---------- */
+function sampleD(d, w, h, fu, fv) {
+  const x = Math.min(w - 1.001, Math.max(0, fu * (w - 1))), y = Math.min(h - 1.001, Math.max(0, fv * (h - 1))), x0 = Math.floor(x), y0 = Math.floor(y), tx = x - x0, ty = y - y0;
+  const a = d[y0 * w + x0], b = d[y0 * w + x0 + 1], c = d[(y0 + 1) * w + x0], e = d[(y0 + 1) * w + x0 + 1];
+  return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + e * tx) * ty;
+}
+let reliefTex = null;
+function addRelief() {
+  if (!S.depth || !S.showRelief) return;
+  const { w, h, d } = S.depth, cols = S.detail, rows = Math.max(8, Math.round(cols * S.IH / S.IW)), nx = cols + 1;
+  const pos = new Float32Array(nx * (rows + 1) * 3), uv = new Float32Array(nx * (rows + 1) * 2), zs = new Float32Array(nx * (rows + 1));
+  const iN = 1 / S.near, iF = 1 / S.far;
+  for (let j = 0; j <= rows; j++) for (let i = 0; i <= cols; i++) {
+    const k = j * nx + i, fu = i / cols, fv = j / rows, disp = sampleD(d, w, h, fu, fv), z = 1 / (iF + disp * (iN - iF)), p = Pw(fu * S.IW, fv * S.IH, z);
+    pos.set([p.x, p.y, p.z], k * 3); uv.set([fu, 1 - fv], k * 2); zs[k] = z;
+  }
+  const idx = [];
+  for (let j = 0; j < rows; j++) for (let i = 0; i < cols; i++) {
+    const a = j * nx + i, b = a + 1, c = a + nx, e = c + 1, zz = [zs[a], zs[b], zs[c], zs[e]], mx = Math.max(...zz), mn = Math.min(...zz);
+    if (mx / mn > 1.10) continue;                                          // leave a gap where depth jumps, instead of a stretched sheet
+    idx.push(a, c, b, b, c, e);
+  }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2)); g.setIndex(idx); g.computeVertexNormals();
+  let mat;
+  if (S.paint) { if (!reliefTex) { reliefTex = new THREE.Texture($('pic')); reliefTex.colorSpace = THREE.SRGBColorSpace; } reliefTex.needsUpdate = true; mat = new THREE.MeshStandardMaterial({ map: reliefTex, roughness: 1, side: THREE.DoubleSide }); }
+  else mat = new THREE.MeshStandardMaterial({ color: 0xc4b8a8, roughness: 0.95, side: THREE.DoubleSide });
+  const m = new THREE.Mesh(g, mat); add(m, false);
+}
+function blur(d, w, h, r) {                                  // two passes of a box blur, to calm the noise in the depth map
+  const tmp = new Float32Array(d.length);
+  for (let pass = 0; pass < 2; pass++) {
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const xx = x + k; if (xx >= 0 && xx < w) { s += d[y * w + xx]; n++; } } tmp[y * w + x] = s / n; }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { let s = 0, n = 0; for (let k = -r; k <= r; k++) { const yy = y + k; if (yy >= 0 && yy < h) { s += tmp[yy * w + x]; n++; } } d[y * w + x] = s / n; }
+  }
+}
+let depthPipe = null;
+const dmsg = t => { $('dmsg').textContent = t || ''; };
+async function estimateDepth() {
+  if (!S.loaded) return; $('estimate').disabled = true;
+  try {
+    if (!depthPipe) {
+      dmsg('Loading the depth model. The first time takes a minute.');
+      const tf = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2/+esm');
+      depthPipe = await tf.pipeline('depth-estimation', 'onnx-community/depth-anything-v2-small', { progress_callback: p => { if (p.status === 'progress' && p.progress != null) dmsg('Downloading the model: ' + Math.round(p.progress) + '%'); } });
+    }
+    dmsg('Estimating depth from your image\u2026');
+    const out = await depthPipe($('pic').src), t = out.predicted_depth, dims = t.dims, hh = dims[dims.length - 2], ww = dims[dims.length - 1], raw = t.data;
+    let mn = Infinity, mx = -Infinity; for (let i = 0; i < raw.length; i++) { if (raw[i] < mn) mn = raw[i]; if (raw[i] > mx) mx = raw[i]; }
+    const d = new Float32Array(raw.length); for (let i = 0; i < raw.length; i++) d[i] = (raw[i] - mn) / ((mx - mn) || 1);   // 1 = nearest
+    blur(d, ww, hh, Math.max(1, Math.round(ww / 150))); S.depth = { w: ww, h: hh, d }; buildScene(); if (view === 'trace') applyView('painter'); dmsg('Draft built. Orbit or walk to explore it, then refine by hand.');
+  } catch (err) { console.error(err); dmsg('The depth model could not load here. You can still build the room by hand with the steps below.'); }
+  $('estimate').disabled = false;
+}
+$('estimate').addEventListener('click', estimateDepth);
+const rebuildLater = (() => { let tm; return () => { clearTimeout(tm); tm = setTimeout(buildScene, 150); }; })();
+$('near').addEventListener('input', e => { S.near = e.target.value / 100; $('o-near').textContent = S.near.toFixed(1) + ' m'; if (S.far <= S.near + 0.5) { S.far = S.near + 0.5; $('far').value = S.far * 100; $('o-far').textContent = S.far.toFixed(0) + ' m'; } rebuildLater(); });
+$('far').addEventListener('input', e => { S.far = Math.max(e.target.value / 100, S.near + 0.5); $('o-far').textContent = S.far.toFixed(0) + ' m'; rebuildLater(); });
+$('detail').addEventListener('input', e => { S.detail = +e.target.value; $('o-detail').textContent = S.detail; rebuildLater(); });
+$('showrelief').addEventListener('change', e => { S.showRelief = e.target.checked; buildScene(); });
+$('paint').addEventListener('change', e => { S.paint = e.target.checked; buildScene(); });
+$('auto').addEventListener('change', e => { S.auto = e.target.checked; });
+$('o-near').textContent = '2.0 m'; $('o-far').textContent = '12 m'; $('o-detail').textContent = '192';
 let center = new V3(0, 1, -5), zMax = 6;
 function buildScene() {
   while (root.children.length) { const o = root.children.pop(); o.traverse(c => { if (c.geometry) c.geometry.dispose(); }); }
   if (!S.loaded) return;
+  addRelief();
   const zs = [];
   S.objs.forEach(o => {
     const z = floorZ(o.vb), x = (o.ub - UC()) * z / F(), H = o.type === 'wall' ? 5 : (o.vb - o.vt) * z / F();
@@ -338,7 +415,7 @@ const LIGHTS = [
   { id: 'b', name: 'Light 2', color: 0x6fb7b0, on: false, az: 40, el: 45, dist: 5, int: 70, soft: 30, warm: 40, cone: 0.95 },
   { id: 'c', name: 'Light 3', color: 0xe0776b, on: false, az: 0, el: 75, dist: 5, int: 60, soft: 40, warm: 60, cone: 0.95 },
 ];
-const hemi = new THREE.HemisphereLight(0xffe9cc, 0x2a2018, 0.12); scene.add(hemi);
+const hemi = new THREE.HemisphereLight(0xffe9cc, 0x2a2018, 0.35); scene.add(hemi);
 const gizmos = new THREE.Group(); scene.add(gizmos);
 LIGHTS.forEach(L => {
   L.light = new PhysicalSpotLight(0xffffff, 100, 0, L.cone, 0.5, 2); L.light.castShadow = true; L.light.shadow.mapSize.set(2048, 2048); L.light.shadow.bias = -0.0004; L.light.shadow.camera.near = 0.3; L.light.shadow.camera.far = 60;
@@ -389,7 +466,7 @@ function applyView(v) {
   orbit.enabled = (v === 'orbit' || v === 'plan'); camera.up.set(0, 1, 0);
   if (v === 'painter') { camera.position.set(0, S.hc, 0); camera.rotation.set(0, 0, 0); }
   if (v === 'walk') { camera.position.set(0, S.hc, -0.5); yaw = 0; pitch = 0; }
-  if (v === 'orbit') { camera.position.set(zMax * 0.9, 3 + zMax * 0.35, zMax * 0.25); orbit.target.set(0, 1, -zMax * 0.5); orbit.update(); }
+  if (v === 'orbit') { if (S.depth && S.showRelief) { const m = (S.near + S.far) * 0.35; camera.position.set(m * 0.55, 1.6 + m * 0.2, 1.2); orbit.target.set(0, 1.2, -m); } else { camera.position.set(zMax * 0.9, 3 + zMax * 0.35, zMax * 0.25); orbit.target.set(0, 1, -zMax * 0.5); } orbit.update(); }
   if (v === 'plan') { camera.up.set(0, 0, -1); camera.position.set(0, zMax * 2.2, -zMax * 0.5); orbit.target.set(0, 0, -zMax * 0.5); orbit.update(); }
   camera.fov = 60; camera.updateProjectionMatrix(); layoutOverlay(); resetPT(); drawTrace();
 }
@@ -497,7 +574,7 @@ function loadSrc(src, after) {
     S.IW = img.naturalWidth; S.IH = img.naturalHeight; S.loaded = true; $('ref').src = src; $('empty').hidden = true;
     S.objs = []; S.ref = null; S.pend = null; S.tool = null; S.hor = 0.45; S.hfov = 40; S.hc = 1.5; if (after) after();
     $('hor').value = S.hor * 100; $('o-hor').textContent = Math.round(S.hor * S.IH) + ' px'; $('fov').value = S.hfov; $('o-fov').textContent = S.hfov + '°'; $('hc').value = S.hc * 100; $('o-hc').textContent = S.hc.toFixed(2) + ' m';
-    applyView('trace'); layoutOverlay(); buildScene(); listObjs(); drawTrace(); msg('');
+    S.depth = null; applyView('trace'); layoutOverlay(); buildScene(); listObjs(); drawTrace(); msg(''); if (S.auto) estimateDepth();
   };
   img.src = src;
 }
