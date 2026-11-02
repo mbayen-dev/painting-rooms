@@ -6,6 +6,8 @@ Walkable, path-traced clay models of the rooms inside paintings, rebuilt in metr
 
 Live site: https://mbayen-dev.github.io/painting-rooms/ (home page with all rooms)
 
+Upload your own: `your-painting.html` (mark the horizon, a known height and floor contact points in the browser; nothing is uploaded).
+
 Rooms: `calling.html`, `las-meninas.html`, `folies-bergere.html`, `daughters-of-boit.html`.
 
 ## How it works
