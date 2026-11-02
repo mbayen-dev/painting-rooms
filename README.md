@@ -6,8 +6,6 @@ Walkable, path-traced clay models of the rooms inside paintings, rebuilt in metr
 
 Live site: https://mbayen-dev.github.io/painting-rooms/ (home page with all rooms)
 
-Upload your own: `your-painting.html`. On upload, an in-browser depth model (Depth Anything V2 small, via transformers.js) builds a draft relief; then refine by marking the horizon, a known height and floor contact points. Nothing is uploaded; the model downloads from Hugging Face on first use.
-
 Rooms: `calling.html`, `las-meninas.html`, `folies-bergere.html`, `daughters-of-boit.html`.
 
 ## How it works
